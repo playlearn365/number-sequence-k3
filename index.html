@@ -131,8 +131,42 @@
     @keyframes confFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(105vh) rotate(540deg);opacity:0}}
     .steam-puff{position:absolute;width:14px;height:14px;background:rgba(255,255,255,.7);border-radius:50%;animation:steam .8s ease-out forwards;}
 
-    @media(max-width:600px){
-      #game-title{font-size:1.5rem;}
+    /* ── Landscape / tablet first ── */
+    @media (orientation: portrait) and (max-width: 600px) {
+      #app { padding: .6rem .5rem 1rem; gap: .6rem; }
+      #game-title { font-size: 1.3rem; }
+      #range-badge { font-size: .9rem; padding: 5px 14px; }
+      .diff-btn { padding: 10px 16px; font-size: .85rem; }
+      .train-car, .slot { width: 60px; height: 56px; }
+      .train-car .car-num { font-size: 15px; }
+      .train-car .car-animal svg { width: 26px; height: 22px; }
+      .train-car .wheels { gap: 6px; margin-top: 3px; }
+      .train-car .wheels svg { width: 14px; height: 14px; }
+      #train-row { gap: 2px; overflow-x: auto; }
+      #car-slots { gap: 2px; }
+      #engine-wrap svg { width: 64px; height: 56px; }
+      #cars-pool { gap: 8px; }
+      #diff-buttons { gap: 8px; }
+      #scatter-panel { padding: .6rem .7rem .7rem; }
+      #track-panel { padding: .7rem .6rem .5rem; }
+    }
+    /* Portrait: show rotate hint */
+    @media (orientation: portrait) and (max-width: 600px) {
+      #rotate-hint { display: flex; }
+    }
+    #rotate-hint {
+      display: none;
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(30,60,40,.85);
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1rem; color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1.1rem; font-weight: 700;
+      text-align: center; padding: 2rem;
+    }
+    #rotate-hint .icon { font-size: 3.5rem; animation: rotateIcon 2s ease-in-out infinite; }
+    @keyframes rotateIcon { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(90deg)} }
       .train-car,.slot{width:70px;height:68px;}
       .train-car .car-num{font-size:18px;}
       #train-row{gap:3px;}
@@ -214,11 +248,20 @@
   </div>
 </div>
 
+<div id="rotate-hint"><div class="icon">📱</div><div>請將手機<br>橫放來玩喔！</div></div>
 <div id="ghost"></div>
 <div id="confetti-layer"></div>
 
 <script>
 (function(){
+  /* Unlock audio on very first touch/click for iOS/Android */
+  function _unlockOnce(){
+    Tone.start().catch(()=>{});
+    document.removeEventListener('touchstart',_unlockOnce,true);
+    document.removeEventListener('mousedown',_unlockOnce,true);
+  }
+  document.addEventListener('touchstart',_unlockOnce,{once:true,capture:true});
+  document.addEventListener('mousedown',_unlockOnce,{once:true,capture:true});
   const NOTES=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5',
                'F5','G5','A5','B5','C6','D6','E6','F6','G6','A6'];
   const ANIMALS=[
@@ -240,15 +283,17 @@
     marimba=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();
     audioReady=true;
   }
+  async function unlockAudio(){
+    try{ await Tone.start(); initAudio(); }catch(e){}
+  }
   function playNote(n){
     initAudio();
     try{Tone.start();const idx=Math.min(n-1,NOTES.length-1);marimba.triggerAttackRelease(NOTES[idx],'8n',Tone.now());}catch(e){}
   }
-  function playError(){initAudio();try{Tone.start();marimba.triggerAttackRelease('A3','16n',Tone.now());}catch(e){}}
+  function playError(){initAudio();try{Tone.start().then(()=>marimba.triggerAttackRelease('A3','16n',Tone.now()));}catch(e){}}
   function playFanfare(){
     initAudio();
-    try{Tone.start();const now=Tone.now();
-      ['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));}
+    try{Tone.start().then(()=>{const now=Tone.now();['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));});}
     catch(e){}
   }
 
@@ -260,11 +305,13 @@
     let effectiveMode = mode;
     if(mode==='mix') effectiveMode = Math.random()<.5 ? 'asc' : 'desc';
     currentEffectiveMode = effectiveMode;
-    const start=Math.floor(Math.random()*(max-5))+1;
-    currentStart=start;
-    const nums=[];
-    for(let i=0;i<6;i++) nums.push(start+i);
-    return effectiveMode==='desc' ? nums.reverse() : nums;
+    const start = Math.floor(Math.random()*(max-5))+1;
+    currentStart = start;
+    /* ascending base: [start, start+1, ..., start+5] */
+    const ascending = [];
+    for(let i=0;i<6;i++) ascending.push(start+i);
+    /* display order depends on mode */
+    return effectiveMode==='desc' ? [...ascending].reverse() : ascending;
   }
 
   /* ── colour class cycles by position ── */
@@ -453,11 +500,12 @@
 
     /* Badge */
     const badge=document.getElementById('range-badge');
-    const end=currentStart+4;
-    let modeLabel= currentEffectiveMode==='desc'?'由大到小 ⬇':'由小到大 ⬆';
-    if(mode==='mix') modeLabel+=' 🎲';
-    const lo=Math.min(currentStart,end), hi=Math.max(currentStart,end);
-    badge.textContent=`第 ${lo} 號 ↔ 第 ${hi} 號車廂　${modeLabel}`;
+    const lo = currentStart, hi = currentStart+5;
+    let modeLabel = currentEffectiveMode==='desc' ? '由大到小 ⬇' : '由小到大 ⬆';
+    if(mode==='mix') modeLabel += ' 🎲';
+    badge.textContent = currentEffectiveMode==='desc'
+      ? `第 ${hi} 號 → 第 ${lo} 號車廂　${modeLabel}`
+      : `第 ${lo} 號 → 第 ${hi} 號車廂　${modeLabel}`;
     badge.style.display='block';
     badge.classList.remove('pop-in'); void badge.offsetWidth; badge.classList.add('pop-in');
 
