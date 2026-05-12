@@ -254,14 +254,9 @@
 
 <script>
 (function(){
-  /* Unlock audio on very first touch/click for iOS/Android */
-  function _unlockOnce(){
-    Tone.start().catch(()=>{});
-    document.removeEventListener('touchstart',_unlockOnce,true);
-    document.removeEventListener('mousedown',_unlockOnce,true);
-  }
-  document.addEventListener('touchstart',_unlockOnce,{once:true,capture:true});
-  document.addEventListener('mousedown',_unlockOnce,{once:true,capture:true});
+  document.addEventListener('touchstart', ensureAudio, {once:false, passive:true});
+  document.addEventListener('mousedown',  ensureAudio, {once:false, passive:true});
+  
   const NOTES=['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5',
                'F5','G5','A5','B5','C6','D6','E6','F6','G6','A6'];
   const ANIMALS=[
@@ -273,27 +268,53 @@
     `<svg width="36" height="32" viewBox="0 0 38 34"><ellipse cx="19" cy="20" rx="11" ry="13" fill="#2A2A2A"/><ellipse cx="19" cy="21" rx="7" ry="9" fill="white"/><circle cx="19" cy="10" r="7" fill="#2A2A2A"/><ellipse cx="15" cy="9" rx="2" ry="2" fill="white"/><ellipse cx="23" cy="9" rx="2" ry="2" fill="white"/><circle cx="15" cy="9" r="1.2" fill="#1A1A1A"/><circle cx="23" cy="9" r="1.2" fill="#1A1A1A"/><circle cx="14.6" cy="8.6" r=".4" fill="white"/><circle cx="22.6" cy="8.6" r=".4" fill="white"/><ellipse cx="19" cy="13" rx="3" ry="2" fill="#FF9A00"/><ellipse cx="10" cy="24" rx="4" ry="2.5" fill="#FF9A00" transform="rotate(-20,10,24)"/><ellipse cx="28" cy="24" rx="4" ry="2.5" fill="#FF9A00" transform="rotate(20,28,24)"/></svg>`
   ];
 
-  let audioReady=false, marimba=null;
+  let marimba=null, audioReady=false;
   let dragNum=null, ghostOffX=0, ghostOffY=0, activeSlot=null;
   let currentMode='', currentRange='', currentStart=1, currentEffectiveMode='asc';
   let carNumbers=[], placedMap={}, shuffledAnimals=[];
 
-  function initAudio(){
-    if(audioReady)return;
-    marimba=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();
+  function initSound(){
+    if(audioReady||!window.Tone)return;
+    try{
+      marimba=new Tone.Synth({
+        oscillator:{type:'triangle'},
+        envelope:{attack:.002,decay:.35,sustain:.1,release:.6}
+      }).toDestination();
+      audioReady=true;
+    }catch(e){console.warn('音效初始化失敗',e);}
+  }
+  function ensureAudio(){
+    if(window.Tone&&Tone.context.state!=='running') Tone.start();
+  }
+  function initAudio(){ initSound(); ensureAudio(); },envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();
     audioReady=true;
   }
   async function unlockAudio(){
     try{ await Tone.start(); initAudio(); }catch(e){}
   }
   function playNote(n){
-    initAudio();
-    try{Tone.start();const idx=Math.min(n-1,NOTES.length-1);marimba.triggerAttackRelease(NOTES[idx],'8n',Tone.now());}catch(e){}
+    try{
+      ensureAudio();
+      if(!marimba||Tone.context.state!=='running')return;
+      marimba.triggerAttackRelease(NOTES[Math.min(n-1,NOTES.length-1)],'8n',Tone.now());
+    }catch(e){}
+  }catch(e){}
   }
-  function playError(){initAudio();try{Tone.start().then(()=>marimba.triggerAttackRelease('A3','16n',Tone.now()));}catch(e){}}
+  function playError(){
+    try{
+      ensureAudio();
+      if(!marimba||Tone.context.state!=='running')return;
+      marimba.triggerAttackRelease('A3','16n',Tone.now());
+    }catch(e){}
+  }catch(e){}}
   function playFanfare(){
-    initAudio();
-    try{Tone.start().then(()=>{const now=Tone.now();['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));});}
+    try{
+      ensureAudio();
+      if(!marimba||Tone.context.state!=='running')return;
+      const now=Tone.now();
+      ['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));
+    }catch(e){}
+  });}
     catch(e){}
   }
 
@@ -549,6 +570,7 @@
   };
 
   window.addEventListener('resize',buildRails);
+  initSound();
 })();
 </script>
 </body>
