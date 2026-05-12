@@ -286,7 +286,7 @@
   function ensureAudio(){
     if(window.Tone&&Tone.context.state!=='running') Tone.start();
   }
-  function initAudio(){ initSound(); ensureAudio(); },envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();
+  function initAudio(){ initSound(); ensureAudio(); }envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();
     audioReady=true;
   }
   async function unlockAudio(){
