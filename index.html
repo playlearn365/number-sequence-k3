@@ -328,8 +328,8 @@
     document.getElementById('confetti-layer').innerHTML='';
   };
   window.addEventListener('resize',buildRails);
-  initSound();
 })();
+window.onload = function(){ if(window.Tone){ initSound(); } };
 </script>
 </body>
 </html>
