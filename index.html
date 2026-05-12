@@ -180,10 +180,33 @@
     try{marimba=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.002,decay:.35,sustain:.1,release:.6}}).toDestination();audioReady=true;}
     catch(e){console.warn('音效失敗',e);}
   }
-  function ensureAudio(){if(window.Tone&&Tone.context.state!=='running')Tone.start();}
-  function playNote(n){try{ensureAudio();if(!marimba||Tone.context.state!=='running')return;marimba.triggerAttackRelease(NOTES[Math.min(n-1,NOTES.length-1)],'8n',Tone.now());}catch(e){}}
-  function playError(){try{ensureAudio();if(!marimba||Tone.context.state!=='running')return;marimba.triggerAttackRelease('A3','16n',Tone.now());}catch(e){}}
-  function playFanfare(){try{ensureAudio();if(!marimba||Tone.context.state!=='running')return;const now=Tone.now();['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));}catch(e){}}
+  async function ensureAudio(){
+    if(window.Tone && Tone.context.state !== 'running'){
+      try{ await Tone.start(); }catch(e){}
+    }
+  }
+  async function playNote(n){
+    try{
+      await ensureAudio();
+      if(!marimba) return;
+      marimba.triggerAttackRelease(NOTES[Math.min(n-1,NOTES.length-1)],'8n',Tone.now());
+    }catch(e){}
+  }
+  async function playError(){
+    try{
+      await ensureAudio();
+      if(!marimba) return;
+      marimba.triggerAttackRelease('A3','16n',Tone.now());
+    }catch(e){}
+  }
+  async function playFanfare(){
+    try{
+      await ensureAudio();
+      if(!marimba) return;
+      const now=Tone.now();
+      ['C4','E4','G4','C5','E5','G5'].forEach((n,i)=>marimba.triggerAttackRelease(n,'8n',now+i*.14));
+    }catch(e){}
+  }
 
   function shuffle(a){let r=[...a];for(let i=r.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
 
@@ -328,8 +351,8 @@
     document.getElementById('confetti-layer').innerHTML='';
   };
   window.addEventListener('resize',buildRails);
+  if(document.readyState==='complete'){ initSound(); } else { window.addEventListener('load', initSound); }
 })();
-window.onload = function(){ if(window.Tone){ initSound(); } };
 </script>
 </body>
 </html>
